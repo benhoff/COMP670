@@ -28,25 +28,24 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		}
 	}
 
-	private SearchResult getBestMoveAndScore(OthelloGameState s, int depth, int currentMax, int currentMin, boolean calculateMax) {
+	private SearchResult getBestMoveAndScore(OthelloGameState currentState, int depth, int currentMax, int currentMin,
+			boolean shouldCalculateMax) {
 		long searchStartTime = System.currentTimeMillis();
-		int currentStateValue = getEvaluation(s);
-		if (depth == 0 || s.gameIsOver()) {
+		int currentStateValue = getEvaluation(currentState);
+		if (depth == 0 || currentState.gameIsOver()) {
 			return new SearchResult(currentStateValue, null);
 		}
 
-		List<Point> validMoves = getValidMoves(s);
+		List<OthelloMove> validMoves = getValidMoves(currentState);
 		int numValidMoves = validMoves.size();
 		System.out.println("There are " + numValidMoves + " valid moves.");
 
 		int maxEval = Integer.MIN_VALUE;
 		int minEval = Integer.MAX_VALUE;
-		SearchResult bestMove = new SearchResult(0, null);
+		SearchResult currentBestMove = new SearchResult(0, validMoves.get(0));
 
-		int currentMove = 1;
-		for (Point move : validMoves) {
-			System.out.println("Analyzing valid move #" + currentMove);
-			currentMove++;
+		for (int i = 1; i < numValidMoves; i++) {
+			System.out.println("Analyzing valid move #" + i);
 
 			// Break if past the time limit
 			long timeLimitMillis = 100; // TODO: set this as close to 5000 as possible
@@ -56,29 +55,30 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 			}
 
 			SearchResult currentBestMoveAndScore;
-			OthelloGameState state = s.clone();
-			state.makeMove(move.x, move.y);
+			OthelloGameState state = currentState.clone();
+			OthelloMove currentMove = validMoves.get(i);
+			state.makeMove(currentMove.getRow(), currentMove.getColumn());
 
 			// Calculate min or max depending on whose turn it is
-			boolean currentPlayerGetsAnotherTurn = s.isBlackTurn() == state.isBlackTurn();
+			boolean currentPlayerGetsAnotherTurn = currentState.isBlackTurn() == state.isBlackTurn();
 			if (currentPlayerGetsAnotherTurn) {
 				// If it's the same player next turn, keep `calculateMax` variable the same
-				currentBestMoveAndScore = getBestMoveAndScore(state, depth - 1, maxEval, minEval, calculateMax);
+				currentBestMoveAndScore = getBestMoveAndScore(state, depth - 1, maxEval, minEval, shouldCalculateMax);
 			} else {
 				// If it's NOT the same player next turn, flip the `calculateMax`
-				currentBestMoveAndScore = getBestMoveAndScore(state, depth - 1, maxEval, minEval, !calculateMax);
+				currentBestMoveAndScore = getBestMoveAndScore(state, depth - 1, maxEval, minEval, !shouldCalculateMax);
 			}
 
-			if (calculateMax) {
+			if (shouldCalculateMax) {
 				currentMax = Math.max(currentMax, currentBestMoveAndScore.score);
-				if (bestMove.score < currentBestMoveAndScore.score) {
-					bestMove = currentBestMoveAndScore;
+				if (currentBestMove.score < currentBestMoveAndScore.score) {
+					currentBestMove = currentBestMoveAndScore;
 				}
 
 			} else {
 				currentMin = Math.min(currentMin, currentBestMoveAndScore.score);
-				if (bestMove.score > currentBestMoveAndScore.score) {
-					bestMove = currentBestMoveAndScore;
+				if (currentBestMove.score > currentBestMoveAndScore.score) {
+					currentBestMove = currentBestMoveAndScore;
 				}
 			}
 
@@ -93,11 +93,12 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		}
 
 		// If no best move was determined, pick first valid move
-		if (bestMove.move == null) {
-			bestMove.move = new OthelloMove(validMoves.get(0).x, validMoves.get(0).y);
+		if (currentBestMove.move == null) {
+			OthelloMove firstValidMove = validMoves.get(0);
+			currentBestMove.move = new OthelloMove(firstValidMove.getRow(), firstValidMove.getColumn());
 		}
 
-		return bestMove;
+		return currentBestMove;
 	}
 
 	private int getEvaluation(OthelloGameState state) {
@@ -117,14 +118,14 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 
 	}
 
-	private List<Point> getValidMoves(OthelloGameState s) {
-		List<Point> result = new ArrayList<Point>();
+	private List<OthelloMove> getValidMoves(OthelloGameState s) {
+		List<OthelloMove> result = new ArrayList<OthelloMove>();
 		for (int x = 0; x < 8; x++) {
 			for (int y = 0; y < 8; y++) {
 				// Check if this is valid move, if it's not, we'll continue on
 				boolean isValidMove = s.isValidMove(x, y);
 				if (isValidMove) {
-					result.add(new Point(x, y));
+					result.add(new OthelloMove(x, y));
 				}
 			}
 		}
