@@ -27,7 +27,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		return result;
 	}
 
-	protected int getEvaluation(OthelloGameState state) {
+	private int getEvaluation(OthelloGameState state) {
 		// FIXME: Research if we need to check which player we are?
 
 		// eval(state) = number_of tiles belonging to me - number of tiles belonging to
@@ -45,7 +45,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 
 	}
 
-	protected List<Point> getValidMoves(OthelloGameState s) {
+	private List<Point> getValidMoves(OthelloGameState s) {
 		List<Point> result = new ArrayList<Point>();
 		for (int x = 0; x < 8; x++) {
 			for (int y = 0; y < 8; y++) {
@@ -59,7 +59,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		return result;
 	}
 
-	protected SearchResult search(OthelloGameState s, int depth, int alpha, int beta, boolean calculateMax) {
+	private SearchResult search(OthelloGameState s, int depth, int alpha, int beta, boolean calculateMax) {
 		// FIXME: Your AI will be given 5 seconds of CPU time to choose each of its
 		// moves. Need to implement this
 		int evaluation = getEvaluation(s);
@@ -121,7 +121,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		// FIXME: handle the edge case that all the scores are 0 by randomly selecting a
 		// valid move
 		if (bestMove.move == null) {
-
+			bestMove.move = new OthelloMove(validMoves.get(0).x, validMoves.get(0).y);
 		}
 
 		return bestMove;
