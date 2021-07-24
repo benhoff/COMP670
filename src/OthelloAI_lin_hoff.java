@@ -14,19 +14,21 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 	}
 
 	public OthelloMove chooseMove(OthelloGameState state) {
-		// boolean isGameOver = state.gameIsOver();
-		// boolean aiIsBlack = state.isBlackTurn();
+		if (state.gameIsOver()) {
+			System.out.println("Game is over; returning null");
+			return null;
+		} else {
+			int searchDepth = 10;
+			int currentMax = Integer.MIN_VALUE;
+			int currentMin = Integer.MAX_VALUE;
+			boolean initialCalculateMax = true;
 
-		int initialSearchDepth = 10;
-		int initialAlpha = Integer.MIN_VALUE;
-		int initialBeta = Integer.MAX_VALUE;
-		boolean initialCalculateMax = true;
-
-		SearchResult searchResult = search(state, initialSearchDepth, initialAlpha, initialBeta, initialCalculateMax);
-		return searchResult.move;
+			// TODO: use number of available moves to increase the depth dynamically
+			return getBestMoveAndScore(state, searchDepth, currentMax, currentMin, initialCalculateMax).move;
+		}
 	}
 
-	private SearchResult search(OthelloGameState s, int depth, int alpha, int beta, boolean calculateMax) {
+	private SearchResult getBestMoveAndScore(OthelloGameState s, int depth, int currentMax, int currentMin, boolean calculateMax) {
 		long searchStartTime = System.currentTimeMillis();
 		int currentStateValue = getEvaluation(s);
 		if (depth == 0 || s.gameIsOver()) {
@@ -36,7 +38,6 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		List<Point> validMoves = getValidMoves(s);
 		int numValidMoves = validMoves.size();
 		System.out.println("There are " + numValidMoves + " valid moves.");
-		// TODO: use number of available moves to increase the depth dynamically
 
 		int maxEval = Integer.MIN_VALUE;
 		int minEval = Integer.MAX_VALUE;
@@ -54,30 +55,30 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 				break;
 			}
 
-			SearchResult moveSearchResult;
-			OthelloGameState originalState = s.clone();
-			originalState.makeMove(move.x, move.y);
+			SearchResult currentBestMoveAndScore;
+			OthelloGameState state = s.clone();
+			state.makeMove(move.x, move.y);
 
 			// Calculate min or max depending on whose turn it is
-			boolean currentPlayerGetsAnotherTurn = s.isBlackTurn() == originalState.isBlackTurn();
+			boolean currentPlayerGetsAnotherTurn = s.isBlackTurn() == state.isBlackTurn();
 			if (currentPlayerGetsAnotherTurn) {
 				// If it's the same player next turn, keep `calculateMax` variable the same
-				moveSearchResult = search(originalState, depth - 1, maxEval, minEval, calculateMax);
+				currentBestMoveAndScore = getBestMoveAndScore(state, depth - 1, maxEval, minEval, calculateMax);
 			} else {
 				// If it's NOT the same player next turn, flip the `calculateMax`
-				moveSearchResult = search(originalState, depth - 1, maxEval, minEval, !calculateMax);
+				currentBestMoveAndScore = getBestMoveAndScore(state, depth - 1, maxEval, minEval, !calculateMax);
 			}
 
 			if (calculateMax) {
-				alpha = Math.max(alpha, moveSearchResult.score);
-				if (bestMove.score < moveSearchResult.score) {
-					bestMove = moveSearchResult;
+				currentMax = Math.max(currentMax, currentBestMoveAndScore.score);
+				if (bestMove.score < currentBestMoveAndScore.score) {
+					bestMove = currentBestMoveAndScore;
 				}
 
 			} else {
-				beta = Math.min(beta, moveSearchResult.score);
-				if (bestMove.score > moveSearchResult.score) {
-					bestMove = moveSearchResult;
+				currentMin = Math.min(currentMin, currentBestMoveAndScore.score);
+				if (bestMove.score > currentBestMoveAndScore.score) {
+					bestMove = currentBestMoveAndScore;
 				}
 			}
 
@@ -86,7 +87,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 			System.out.println("Move loop duration: " + loopDuration + " ms");
 
 			// Prune if possible
-			if (beta <= alpha) {
+			if (currentMin <= currentMax) {
 				break;
 			}
 		}
