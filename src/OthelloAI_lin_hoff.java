@@ -62,6 +62,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 	private SearchResult search(OthelloGameState s, int depth, int alpha, int beta, boolean calculateMax) {
 		// FIXME: Your AI will be given 5 seconds of CPU time to choose each of its
 		// moves. Need to implement this
+		long searchStartTime = System.currentTimeMillis();
 		int evaluation = getEvaluation(s);
 		if (depth == 0 || s.gameIsOver()) {
 			return new SearchResult(evaluation, null);
@@ -78,6 +79,13 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		int minEval = Integer.MAX_VALUE;
 
 		for (Point move : validMoves) {
+			// Break if past the time limit
+			long timeLimitMillis = 100; // TODO: set this as close to 5000 as possible
+			long loopStartTime = System.currentTimeMillis();
+			if (loopStartTime - searchStartTime > timeLimitMillis) {
+				break;
+			}
+
 			// Create a reference that we can put our move result into
 			SearchResult moveSearchResult;
 			// clone the state so that we don't mess up the original
@@ -95,9 +103,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 			// If it's the same next turn, we'll keep the `calculateMax` variable the same
 			if (sameNextTurn) {
 				moveSearchResult = search(movedState, depth - 1, maxEval, minEval, calculateMax);
-			}
-			// If it's NOT the same next turn, we'll flip the `calculateMax`
-			else {
+			} else { // If it's NOT the same next turn, we'll flip the `calculateMax`
 				moveSearchResult = search(movedState, depth - 1, maxEval, minEval, !calculateMax);
 			}
 
@@ -113,6 +119,12 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 					bestMove = moveSearchResult;
 				}
 			}
+
+			long loopEndTime = System.currentTimeMillis();
+			long loopDuration = loopEndTime - loopStartTime;
+			System.out.println("Move loop duration: " + loopDuration + " ms");
+
+			// Prune if possible
 			if (beta <= alpha) {
 				break;
 			}
