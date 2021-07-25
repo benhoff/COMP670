@@ -1,15 +1,16 @@
-import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
 public class OthelloAI_lin_hoff implements OthelloAI {
-	class SearchResult {
+	private boolean amBlack;
+
+	class MoveAndScore {
 		public int score;
 		public OthelloMove move;
 
-		public SearchResult(int inScore, OthelloMove inMove) {
-			score = inScore;
+		public MoveAndScore(OthelloMove inMove, int inScore) {
 			move = inMove;
+			score = inScore;
 		}
 	}
 
@@ -18,87 +19,91 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 			System.out.println("Game is over; returning null");
 			return null;
 		} else {
-			int searchDepth = 10;
-			int currentMax = Integer.MIN_VALUE;
-			int currentMin = Integer.MAX_VALUE;
-			boolean initialCalculateMax = true;
+			this.amBlack = state.isBlackTurn();
+			int initialSearchDepth = 10;
 
 			// TODO: use number of available moves to increase the depth dynamically
-			return getBestMoveAndScore(state, searchDepth, currentMax, currentMin, initialCalculateMax).move;
+			List<OthelloMove> initialValidMoves = getValidMoves(state);
+			return getBestMoveAndScore(state, initialSearchDepth, initialValidMoves).move;
 		}
 	}
 
-	private SearchResult getBestMoveAndScore(OthelloGameState currentState, int depth, int currentMax, int currentMin,
-			boolean shouldCalculateMax) {
+	private MoveAndScore getBestMoveAndScore(OthelloGameState currentState, int depth, List<OthelloMove> validMoves) {
 		long searchStartTime = System.currentTimeMillis();
-		int currentStateValue = getEvaluation(currentState);
-		if (depth == 0 || currentState.gameIsOver()) {
-			return new SearchResult(currentStateValue, null);
-		}
 
-		List<OthelloMove> validMoves = getValidMoves(currentState);
-		int numValidMoves = validMoves.size();
-		System.out.println("There are " + numValidMoves + " valid moves.");
+		// Set initial values
+		OthelloMove bestMove = validMoves.get(0);
+		OthelloGameState stateAfterMove = getNewState(currentState, bestMove);
+		int bestScore = getEvaluation(stateAfterMove);
+		MoveAndScore bestMoveAndScore = new MoveAndScore(bestMove, bestScore);
 
-		int maxEval = Integer.MIN_VALUE;
-		int minEval = Integer.MAX_VALUE;
-		SearchResult currentBestMove = new SearchResult(0, validMoves.get(0));
+		int worstScore = bestScore; // since there is only one score, it is the best and the worst
 
-		for (int i = 1; i < numValidMoves; i++) {
-			System.out.println("Analyzing valid move #" + i);
+		for (int i = 1; i < validMoves.size(); i++) {
+			System.out.println("Analyzing move " + i + "/" + validMoves.size());
 
 			// Break if past the time limit
-			long timeLimitMillis = 100; // TODO: set this as close to 5000 as possible
+			long timeLimitMillis = 500; // TODO: set this as close to 5000 as possible
 			long loopStartTime = System.currentTimeMillis();
 			if (loopStartTime - searchStartTime > timeLimitMillis) {
 				break;
 			}
 
-			SearchResult currentBestMoveAndScore;
-			OthelloGameState state = currentState.clone();
-			OthelloMove currentMove = validMoves.get(i);
-			state.makeMove(currentMove.getRow(), currentMove.getColumn());
+			OthelloMove move = validMoves.get(i);
+			stateAfterMove = getNewState(currentState, move);
+			int moveScore = getMyScore(stateAfterMove);
 
-			// Calculate min or max depending on whose turn it is
-			boolean currentPlayerGetsAnotherTurn = currentState.isBlackTurn() == state.isBlackTurn();
-			if (currentPlayerGetsAnotherTurn) {
-				// If it's the same player next turn, keep `calculateMax` variable the same
-				currentBestMoveAndScore = getBestMoveAndScore(state, depth - 1, maxEval, minEval, shouldCalculateMax);
+			if (depth == 0) {
+				moveScore = getMyScore(stateAfterMove);
 			} else {
-				// If it's NOT the same player next turn, flip the `calculateMax`
-				currentBestMoveAndScore = getBestMoveAndScore(state, depth - 1, maxEval, minEval, !shouldCalculateMax);
+				List<OthelloMove> childValidMoves = getValidMoves(stateAfterMove);
+				if (childValidMoves.isEmpty()) {
+					moveScore = getMyScore(stateAfterMove);
+				} else {
+					moveScore = getBestMoveAndScore(stateAfterMove, depth - 1, childValidMoves).score;
+				}
 			}
 
-			if (shouldCalculateMax) {
-				currentMax = Math.max(currentMax, currentBestMoveAndScore.score);
-				if (currentBestMove.score < currentBestMoveAndScore.score) {
-					currentBestMove = currentBestMoveAndScore;
+			if (maximizing(currentState)) {
+				if (moveScore > bestScore) {
+					bestScore = moveScore;
+					bestMoveAndScore = new MoveAndScore(move, moveScore);
+				} else if (moveScore < worstScore) {
+					worstScore = moveScore;
 				}
-
 			} else {
-				currentMin = Math.min(currentMin, currentBestMoveAndScore.score);
-				if (currentBestMove.score > currentBestMoveAndScore.score) {
-					currentBestMove = currentBestMoveAndScore;
+				if (moveScore < bestScore) {
+					bestScore = moveScore;
+					bestMoveAndScore = new MoveAndScore(move, moveScore);
+				} else if (moveScore > worstScore) {
+					worstScore = moveScore;
 				}
 			}
 
 			long loopEndTime = System.currentTimeMillis();
 			long loopDuration = loopEndTime - loopStartTime;
-			System.out.println("Move loop duration: " + loopDuration + " ms");
-
-			// Prune if possible
-			if (currentMin <= currentMax) {
-				break;
-			}
+			System.out.println("    " + loopDuration + " ms");
 		}
 
-		// If no best move was determined, pick first valid move
-		if (currentBestMove.move == null) {
-			OthelloMove firstValidMove = validMoves.get(0);
-			currentBestMove.move = new OthelloMove(firstValidMove.getRow(), firstValidMove.getColumn());
-		}
+		return bestMoveAndScore;
+	}
 
-		return currentBestMove;
+	private boolean maximizing(OthelloGameState state) {
+		return this.amBlack && state.isBlackTurn();
+	}
+
+	private OthelloGameState getNewState(OthelloGameState state, OthelloMove move) {
+		OthelloGameState newState = state.clone();
+		newState.makeMove(move.getRow(), move.getColumn());
+		return newState;
+	}
+
+	private int getMyScore(OthelloGameState newState) {
+		if (this.amBlack) {
+			return newState.getBlackScore();
+		} else {
+			return newState.getWhiteScore();
+		}
 	}
 
 	private int getEvaluation(OthelloGameState state) {
@@ -106,10 +111,9 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 
 		// TODO: consider better scoring method than just "# black - # white"
 		int evaluation = 0;
-		boolean isBlackTurn = state.isBlackTurn();
 		int whiteScore = state.getWhiteScore();
 		int blackScore = state.getBlackScore();
-		if (isBlackTurn) {
+		if (state.isBlackTurn()) {
 			evaluation = blackScore - whiteScore;
 		} else {
 			evaluation = whiteScore - blackScore;
@@ -122,9 +126,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		List<OthelloMove> result = new ArrayList<OthelloMove>();
 		for (int x = 0; x < 8; x++) {
 			for (int y = 0; y < 8; y++) {
-				// Check if this is valid move, if it's not, we'll continue on
-				boolean isValidMove = s.isValidMove(x, y);
-				if (isValidMove) {
+				if (s.isValidMove(x, y)) {
 					result.add(new OthelloMove(x, y));
 				}
 			}
