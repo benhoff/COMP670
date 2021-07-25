@@ -16,11 +16,10 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 
 	public OthelloMove chooseMove(OthelloGameState state) {
 		if (state.gameIsOver()) {
-			System.out.println("Game is over; returning null");
 			return null;
 		} else {
 			this.amBlack = state.isBlackTurn();
-			int initialSearchDepth = 10;
+			int initialSearchDepth = 7;
 
 			// TODO: use number of available moves to increase the depth dynamically
 			List<OthelloMove> initialValidMoves = getValidMoves(state);
@@ -40,13 +39,14 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		int worstScore = bestScore; // since there is only one score, it is the best and the worst
 
 		for (int i = 1; i < validMoves.size(); i++) {
-			System.out.println("Analyzing move " + i + "/" + validMoves.size());
+			System.out.print("Analyzing move " + i + "/" + (validMoves.size() - 1));
 
 			// Break if past the time limit
-			long timeLimitMillis = 500; // TODO: set this as close to 5000 as possible
+			long timeLimitMillis = 4500; // TODO: set this as close to 5000 as possible
 			long loopStartTime = System.currentTimeMillis();
 			if (loopStartTime - searchStartTime > timeLimitMillis) {
-				break;
+				System.out.println("****** Time's up! Breaking out. *****");
+				return bestMoveAndScore;
 			}
 
 			OthelloMove move = validMoves.get(i);
@@ -82,7 +82,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 
 			long loopEndTime = System.currentTimeMillis();
 			long loopDuration = loopEndTime - loopStartTime;
-			System.out.println("    " + loopDuration + " ms");
+			System.out.print("    " + loopDuration + " ms\n");
 		}
 
 		return bestMoveAndScore;
@@ -107,13 +107,10 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 	}
 
 	private int getEvaluation(OthelloGameState state) {
-		// FIXME: Research if we need to check which player we are?
-
-		// TODO: consider better scoring method than just "# black - # white"
 		int evaluation = 0;
 		int whiteScore = state.getWhiteScore();
 		int blackScore = state.getBlackScore();
-		if (state.isBlackTurn()) {
+		if (this.amBlack) {
 			evaluation = blackScore - whiteScore;
 		} else {
 			evaluation = whiteScore - blackScore;
