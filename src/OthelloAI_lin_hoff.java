@@ -3,6 +3,7 @@ import java.util.List;
 
 public class OthelloAI_lin_hoff implements OthelloAI {
 	private boolean amBlack;
+	private int MAX_DEPTH = 60;
 
 	class MoveAndScore {
 		public int score;
@@ -14,20 +15,21 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		}
 	}
 
-	public OthelloMove chooseMove(OthelloGameState state) {
-		if (state.gameIsOver()) {
+	public OthelloMove chooseMove(OthelloGameState gameState) {
+		if (gameState.gameIsOver()) {
 			return null;
 		} else {
-			this.amBlack = state.isBlackTurn();
-			int initialSearchDepth = 7;
+			this.amBlack = gameState.isBlackTurn();
+			int initialSearchDepth = determinedDepthLimit(gameState);
 
 			// TODO: use number of available moves to increase the depth dynamically
-			List<OthelloMove> initialValidMoves = getValidMoves(state);
-			return getBestMoveAndScore(state, initialSearchDepth, initialValidMoves).move;
+			List<OthelloMove> initialValidMoves = getValidMoves(gameState);
+			System.out.println("There are " + initialValidMoves.size() + " valid moves.");
+			return getBestMoveAndScore(gameState, initialSearchDepth, initialValidMoves).move;
 		}
 	}
 
-	private MoveAndScore getBestMoveAndScore(OthelloGameState currentState, int depth, List<OthelloMove> validMoves) {
+	private MoveAndScore getBestMoveAndScore(OthelloGameState gameState, int depth, List<OthelloMove> validMoves) {
 		long searchStartTime = System.currentTimeMillis();
 
 		// Set initial values
@@ -48,7 +50,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 			}
 
 			OthelloMove move = validMoves.get(i);
-			OthelloGameState stateAfterMove = getNewState(currentState, move);
+			OthelloGameState stateAfterMove = getNewState(gameState, move);
 
 			int moveScore;
 			if (depth == 0) {
@@ -62,7 +64,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 				}
 			}
 
-			if (maximizing(currentState)) {
+			if (maximizing(gameState)) {
 				if (moveScore > bestScore) {
 					bestScore = moveScore;
 					bestMoveAndScore = new MoveAndScore(move, moveScore);
@@ -112,5 +114,37 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 			}
 		}
 		return result;
+	}
+
+	private int determinedDepthLimit(OthelloGameState gameState) {
+		int numTilesOnBoard = getNumTilesOnBoard(gameState);
+		if (numTilesOnBoard < 14) {
+			// max tiles left = 60
+			return 8;
+		} else if (numTilesOnBoard >= 14 && numTilesOnBoard < 24) {
+			// max tiles left = 50
+			return 12;
+		} else if (numTilesOnBoard >= 24 && numTilesOnBoard < 34) {
+			// max tiles left = 40
+			return 16;
+		} else if (numTilesOnBoard >= 34 && numTilesOnBoard < 44) {
+			// max tiles left = 30
+			return 20;
+		} else {
+			return MAX_DEPTH;
+		}
+//		} else if (numTilesOnBoard >= 44 && numTilesOnBoard < 54) {
+//			// max tiles left = 20
+//			return MAX_DEPTH;
+//		} else if (numTilesOnBoard >= 54 && numTilesOnBoard < 64) {
+//			// max tiles left = 10
+//			return MAX_DEPTH;
+//		} else {
+//			return MAX_DEPTH;
+//		}
+	}
+
+	private int getNumTilesOnBoard(OthelloGameState gameState) {
+		return gameState.getBlackScore() + gameState.getWhiteScore();
 	}
 }
