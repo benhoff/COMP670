@@ -4,6 +4,8 @@ import java.util.List;
 public class OthelloAI_lin_hoff implements OthelloAI {
 	private boolean amBlack;
 	private int MAX_DEPTH = 60;
+	private int TIME_LIMIT_MILLIS = 4980;
+	private long moveStartTime;
 
 	class MoveAndScore {
 		public int score;
@@ -19,19 +21,25 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		if (gameState.gameIsOver()) {
 			return null;
 		} else {
+			this.moveStartTime = System.currentTimeMillis();
 			this.amBlack = gameState.isBlackTurn();
-			int initialSearchDepth = determinedDepthLimit(gameState);
+			int initialSearchDepth = determineDepthLimit(gameState);
 
 			// TODO: use number of available moves to increase the depth dynamically
 			List<OthelloMove> initialValidMoves = getValidMoves(gameState);
-			System.out.println("There are " + initialValidMoves.size() + " valid moves.");
-			return getBestMoveAndScore(gameState, initialSearchDepth, initialValidMoves).move;
+			if (this.amBlack) {
+				System.out.println(getNumTilesOnBoard(gameState) + " tiles on board: Black considering " + initialValidMoves.size()
+						+ " valid moves.");
+			} else {
+				System.out.println(getNumTilesOnBoard(gameState) + " tiles on board: White considering " + initialValidMoves.size()
+						+ " valid moves.");
+			}
+			return getBestMoveAndScore(gameState, initialSearchDepth, initialValidMoves, true).move;
 		}
 	}
 
-	private MoveAndScore getBestMoveAndScore(OthelloGameState gameState, int depth, List<OthelloMove> validMoves) {
-		long searchStartTime = System.currentTimeMillis();
-
+	private MoveAndScore getBestMoveAndScore(OthelloGameState gameState, int depth, List<OthelloMove> validMoves,
+			boolean originalCall) {
 		// Set initial values
 		OthelloMove bestMove = validMoves.get(0);
 		int bestScore = Integer.MIN_VALUE;
@@ -41,11 +49,12 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 //			System.out.print("Analyzing move " + i + "/" + (validMoves.size() - 1));
 
 			// Break if past the time limit
-			long timeLimitMillis = 4500; // TODO: set this as close to 5000 as possible
 			long loopStartTime = System.currentTimeMillis();
-			long elapsedTime = timeLimitMillis - loopStartTime;
-			if (elapsedTime > timeLimitMillis) {
-				System.out.println("****** Time's up! Breaking out. Elapsed time: " + elapsedTime + " ms *****");
+			long elapsedTime = loopStartTime - moveStartTime;
+			if (elapsedTime > TIME_LIMIT_MILLIS) {
+				if (originalCall) {
+					System.out.println("****** Time's up! Breaking out. Elapsed time: " + elapsedTime + " ms *****");
+				}
 				return bestMoveAndScore;
 			}
 
@@ -60,7 +69,7 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 				if (childValidMoves.isEmpty()) {
 					moveScore = getMyScore(stateAfterMove);
 				} else {
-					moveScore = getBestMoveAndScore(stateAfterMove, depth - 1, childValidMoves).score;
+					moveScore = getBestMoveAndScore(stateAfterMove, depth - 1, childValidMoves, false).score;
 				}
 			}
 
@@ -75,10 +84,12 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 					bestMoveAndScore = new MoveAndScore(move, moveScore);
 				}
 			}
+		}
 
-			long loopEndTime = System.currentTimeMillis();
-			long loopDuration = loopEndTime - loopStartTime;
-//			System.out.print("    " + loopDuration + " ms\n");
+		if (originalCall) {
+			long endTime = System.currentTimeMillis();
+			long elapsedTime = endTime - this.moveStartTime;
+			System.out.println("    Finished processing after " + elapsedTime + " ms.");
 		}
 
 		return bestMoveAndScore;
@@ -116,32 +127,29 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 		return result;
 	}
 
-	private int determinedDepthLimit(OthelloGameState gameState) {
+	private int determineDepthLimit(OthelloGameState gameState) {
 		int numTilesOnBoard = getNumTilesOnBoard(gameState);
-		if (numTilesOnBoard < 14) {
+		if (numTilesOnBoard < 7) {
 			// max tiles left = 60
-			return 8;
+			return 7;
+		} else if (numTilesOnBoard >= 7 && numTilesOnBoard < 14) {
+			// max tiles left = 53
+			return 6;
 		} else if (numTilesOnBoard >= 14 && numTilesOnBoard < 24) {
 			// max tiles left = 50
-			return 12;
+			return 6;
 		} else if (numTilesOnBoard >= 24 && numTilesOnBoard < 34) {
 			// max tiles left = 40
-			return 16;
+			return 7;
 		} else if (numTilesOnBoard >= 34 && numTilesOnBoard < 44) {
 			// max tiles left = 30
-			return 20;
+			return 6;
+		} else if (numTilesOnBoard >= 44 && numTilesOnBoard < 52) {
+			// max tiles left = 20
+			return 7;
 		} else {
 			return MAX_DEPTH;
 		}
-//		} else if (numTilesOnBoard >= 44 && numTilesOnBoard < 54) {
-//			// max tiles left = 20
-//			return MAX_DEPTH;
-//		} else if (numTilesOnBoard >= 54 && numTilesOnBoard < 64) {
-//			// max tiles left = 10
-//			return MAX_DEPTH;
-//		} else {
-//			return MAX_DEPTH;
-//		}
 	}
 
 	private int getNumTilesOnBoard(OthelloGameState gameState) {
