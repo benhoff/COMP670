@@ -66,6 +66,8 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 				moveScore = getMyScore(stateAfterMove);
 			} else {
 				List<OthelloMove> childValidMoves = getValidMoves(stateAfterMove);
+                Collections.shuffle(childValidMoves);
+
 				if (childValidMoves.isEmpty()) {
 					moveScore = getMyScore(stateAfterMove);
 				} else {
