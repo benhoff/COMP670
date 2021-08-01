@@ -25,7 +25,6 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 			this.amBlack = gameState.isBlackTurn();
 			int initialSearchDepth = determineDepthLimit(gameState);
 
-			// TODO: use number of available moves to increase the depth dynamically
 			List<OthelloMove> initialValidMoves = getValidMoves(gameState);
 			if (this.amBlack) {
 				System.out.println(getNumTilesOnBoard(gameState) + " tiles on board: Black considering " + initialValidMoves.size()
@@ -34,12 +33,12 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 				System.out.println(getNumTilesOnBoard(gameState) + " tiles on board: White considering " + initialValidMoves.size()
 						+ " valid moves.");
 			}
-			return getBestMoveAndScore(gameState, initialSearchDepth, initialValidMoves, true).move;
+			return getBestMoveAndScore(gameState, initialSearchDepth, initialValidMoves, true, Integer.MIN_VALUE, Integer.MAX_VALUE).move;
 		}
 	}
 
 	private MoveAndScore getBestMoveAndScore(OthelloGameState gameState, int depth, List<OthelloMove> validMoves,
-			boolean originalCall) {
+			boolean originalCall, int alpha, int beta) {
 		// Set initial values
 		OthelloMove bestMove = validMoves.get(0);
 		int bestScore = Integer.MIN_VALUE;
@@ -69,21 +68,29 @@ public class OthelloAI_lin_hoff implements OthelloAI {
 				if (childValidMoves.isEmpty()) {
 					moveScore = getMyScore(stateAfterMove);
 				} else {
-					moveScore = getBestMoveAndScore(stateAfterMove, depth - 1, childValidMoves, false).score;
+					moveScore = getBestMoveAndScore(stateAfterMove, depth - 1, childValidMoves, false, alpha, beta).score;
 				}
 			}
 
 			if (maximizing(gameState)) {
 				if (moveScore > bestScore) {
+                    alpha = Math.max(alpha, moveScore);
 					bestScore = moveScore;
 					bestMoveAndScore = new MoveAndScore(move, moveScore);
 				}
 			} else {
 				if (moveScore < bestScore) {
+                    beta = Math.min(beta, moveScore);
 					bestScore = moveScore;
 					bestMoveAndScore = new MoveAndScore(move, moveScore);
 				}
 			}
+
+            if (beta <= alpha)
+            {
+                break;
+
+            }
 		}
 
 		if (originalCall) {
